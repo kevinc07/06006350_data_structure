@@ -174,25 +174,25 @@ void task1(const string& filename) {
     // 將文件指標移回文件的開始
     binFile.seekg(0, ios::beg);
 
-    // 計算哈希表的大小（學生數量的1.2倍的下一個質數）
+    // 計算雜湊表的大小（學生數量的1.2倍的下一個質數）
     int tableSize = nextPrime(static_cast<int>(1.2 * studentCount));
 
-    // 初始化一個大小為tableSize的空哈希表
+    // 初始化一個大小為tableSize的空雜湊表
     vector<HashEntry> hashTable(tableSize);
     
     Student student;
-    // 從二進制文件中讀取每一個學生並將其放入哈希表中
+    // 從二進制文件中讀取每一個學生並將其放入雜湊表中
     while (binFile.read(reinterpret_cast<char*>(&student), sizeof(student))) {
-        // 使用學生的SID計算原始的哈希值
+        // 使用學生的SID計算原始的雜湊值
         int originalHvalue = hashFunc(student.sid, tableSize);
-        int hvalue = originalHvalue; // 設定hvalue為原始的哈希值
+        int hvalue = originalHvalue; // 設定hvalue為原始的雜湊值
         
         // 如果此位置已被占用，則使用線性探測法尋找下一個可用的位置
         while (hashTable[hvalue].occupied) {
             hvalue = (hvalue + 1) % tableSize;
         }
         
-        // 將學生放入哈希表的適當位置
+        // 將學生放入雜湊表的適當位置
         hashTable[hvalue].originalHvalue = originalHvalue;
         hashTable[hvalue].hvalue = hvalue;
         hashTable[hvalue].student = student;
@@ -207,10 +207,10 @@ void task1(const string& filename) {
         return;
     }
     
-    // 寫哈希表的標題到輸出文件中
+    // 寫雜湊表的標題到輸出文件中
     outputFile << " --- Hash Table X --- (linear probing)" << endl;
 
-    // 將哈希表的內容寫入輸出文件
+    // 將雜湊表的內容寫入輸出文件
     for (int i = 0; i < tableSize; i++) {
         const HashEntry& entry = hashTable[i];
         outputFile << "[" << setw(3) << i << "]";
@@ -238,7 +238,7 @@ int main() {
     cout << "Enter the filename (either .txt or .bin): ";
     cin >> filename;
 
-    // 處理用戶提供的文件名，創建並填充哈希表
+    // 處理用戶提供的文件名，創建並填充雜湊表
     task1(filename);
     
     return 0;
