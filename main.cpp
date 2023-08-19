@@ -57,20 +57,21 @@ int hashFunc(const char* key, int tableSize) {
 }
 
 
-void task0(const string& txtFilename) {
+bool task0(const string& txtFilename, const string& binFilename) {
     ifstream txtFile(txtFilename);
     if (!txtFile.is_open()) {
-        cout << "Error opening file." << endl;
-        return;
+        cout << "### " << binFilename << " does not exist! ### " << endl;
+        cout << "### " << txtFilename << " does not exist! ### " << endl;
+        return false ;
     }
 
     // Create a binary filename from the text filename
-    string binFilename = txtFilename.substr(0, txtFilename.size() - 3) + "bin";
-    ofstream binFile(binFilename, ios::binary);
+    string binFilename_new = txtFilename.substr(0, txtFilename.size() - 3) + "bin";
+    ofstream binFile(binFilename_new, ios::binary);
 
     if (!binFile.is_open()) {
         cout << "Error creating binary file." << endl;
-        return;
+        return false ;
     }
 
     // Read data from the text file and write it in binary format
@@ -102,6 +103,8 @@ void task0(const string& txtFilename) {
     // Close the files
     txtFile.close();
     binFile.close();
+    
+    return true;
 }
 
 void computeAverageComparisons(const vector<HashEntry>& hashTable, int studentCount, int tableSize) {
@@ -148,23 +151,20 @@ void computeAverageComparisons(const vector<HashEntry>& hashTable, int studentCo
 }
 
 
-void task1(const string& filename) {
-    // 從給定的文件名中生成二進制文件名（例如: students.txt -> students.bin）
-    string binFilename = filename.substr(0, filename.find_last_of('.')) + ".bin";
+void task1(const string& inputNumber) {
+    // 根據輸入的編號生成文件名
+    string filename = "input" + inputNumber + ".txt";
+    string binFilename = "input" + inputNumber + ".bin";
+
     // 嘗試打開二進制文件
     ifstream binFile(binFilename, ios::binary);
-    
+
     // 如果二進制文件不存在或無法打開
     if (!binFile) {
         // 轉換文本文件到二進制文件
-        task0(filename);
-        // 再次嘗試打開二進制文件
-        binFile.open(binFilename, ios::binary);
-    }
-    // 如果二進制文件仍然不存在或無法打開
-    if (!binFile) {
-        cerr << "Error opening binary file." << endl;
-        return;
+       if (!task0(filename, binFilename)) {
+            return; // If task0 fails, then exit task1
+        }
     }
 
     // 跳到二進制文件的末尾以獲取其大小
@@ -200,7 +200,7 @@ void task1(const string& filename) {
     }
     
     // 創建輸出文件名並嘗試打開它
-    string outputFilename = filename.substr(0, filename.find_last_of('.')) + "linear.txt";
+    string outputFilename = "linear" + inputNumber+".txt";
     ofstream outputFile(outputFilename);
     if (!outputFile) {
         cerr << "Error opening output file." << endl;
@@ -240,8 +240,9 @@ int stepFunc(const char* key, int maxStep) {
     return maxStep - (result % maxStep);
 }
 
-void task2(const string& filename) {
-    string binFilename = filename.substr(0, filename.find_last_of('.')) + ".bin";
+void task2(const string& inputNumber) {
+    string filename = "input" + inputNumber + ".txt";
+    string binFilename = "input" + inputNumber + ".bin";
     ifstream binFile(binFilename, ios::binary);
     
     if (!binFile) {
@@ -252,10 +253,10 @@ void task2(const string& filename) {
     binFile.seekg(0, ios::end);
     long long studentCount = static_cast<long long>(binFile.tellg()) / sizeof(Student);
     binFile.seekg(0, ios::beg);
-    cout << "studentCount : " << studentCount << endl;
+    //cout << "studentCount : " << studentCount << endl;
     int tableSize = nextPrime(static_cast<int>(1.2 * studentCount));
     int maxStep = nextPrime(studentCount / 3.0);
-    cout << "maxStep : " << maxStep << endl;
+    //cout << "maxStep : " << maxStep << endl;
     vector<HashEntry> hashTable(tableSize);
     
     Student student;
@@ -264,7 +265,7 @@ void task2(const string& filename) {
     while (binFile.read(reinterpret_cast<char*>(&student), sizeof(student))) {
         int originalHvalue = hashFunc(student.sid, tableSize);
         int step = stepFunc(student.sid, maxStep);
-        cout << "Step : " << step << endl;
+        //cout << "Step : " << step << endl;
 
         int hvalue = originalHvalue;
         int comparisons = 0; // For this specific student
@@ -293,7 +294,7 @@ void task2(const string& filename) {
     double averageExisting = static_cast<double>(totalComparisons) / studentCount;
     cout << "Average comparisons for existing values: " << fixed << setprecision(3) << averageExisting << endl;
 
-    string outputFilename = filename.substr(0, filename.find_last_of('.')) + "double.txt";
+    string outputFilename = "double" + inputNumber+".txt";
     ofstream outputFile(outputFilename);
     if (!outputFile) {
         cerr << "Error opening output file." << endl;
@@ -320,20 +321,11 @@ void task2(const string& filename) {
     outputFile.close();
 }
 
-void task3(const string& filename) {
-    // 從給定的文件名中生成二進制文件名（例如: students.txt -> students.bin）
-    string binFilename = filename.substr(0, filename.find_last_of('.')) + ".bin";
-    // 嘗試打開二進制文件
+void task3(const string& inputNumber) {
+    string filename = "input" + inputNumber + ".txt";
+    string binFilename = "input" + inputNumber + ".bin";
     ifstream binFile(binFilename, ios::binary);
     
-    // 如果二進制文件不存在或無法打開
-    if (!binFile) {
-        // 轉換文本文件到二進制文件
-        task0(filename);
-        // 再次嘗試打開二進制文件
-        binFile.open(binFilename, ios::binary);
-    }
-    // 如果二進制文件仍然不存在或無法打開
     if (!binFile) {
         cerr << "Error opening binary file." << endl;
         return;
@@ -379,7 +371,7 @@ void task3(const string& filename) {
     binFile.close();
 
     // 創建輸出文件名並嘗試打開它
-    string outputFilename = filename.substr(0, filename.find_last_of('.')) + "quadratic.txt";
+    string outputFilename = "quadratic" + inputNumber+".txt";
     ofstream outputFile(outputFilename);
     if (!outputFile) {
         cerr << "Error opening output file." << endl;
@@ -458,18 +450,50 @@ int main() {
     string filename1;
     string filename2;
     string filename3;
+    int choice;
 
-    cout << "Enter the filename (either .txt or .bin): ";
-    //cin >> filename1;
+    while (true) {
+        cout << "*** Hash Table Builder **" << endl;
+        cout << "* 0. QUIT              *" << endl;
+        cout << "* 1. Linear probing    *" << endl;
+        cout << "* 2. Double hashing    *" << endl;
+        cout << "* 3. Quadratic probing *" << endl;
+        cout << "*************************************" << endl;
+        cout << "Input a choice (0, 1, 2, 3): ";
+        cin >> choice;
 
-    //task1(filename1);
-    //cout << "Enter the filename (either .txt or .bin): ";
-    //cin >> filename2;
+        switch (choice) {
+            case 0:
+                cout << "Exiting the program." << endl;
+                return 0;
+            case 1:
+                cout << "Input a file number ([0] Quit): ";
+                cin >> filename1;
+                if (filename1 == "0") {
+                    cout << "Exiting the program." << endl;
+                    return 0;
+                }
+                task1(filename1);
+                break;
+            case 2:
+                if (filename1.empty()) {
+                    cout << "### Choose 1 first. ###" << endl;
+                    continue;
+                }
+                task2(filename1);
+                break;
+            case 3:
+                if (filename1.empty()) {
+                    cout << "### Choose 1 first. ###" << endl;
+                    continue;
+                }
+                task3(filename1);
+                break;
+            default:
+                cout << "Invalid choice. Please select a valid option (0, 1, 2, 3)." << endl;
+                continue;
+        }
+    }
 
-    //task2(filename2);
-    //cout << "Enter the filename (either .txt or .bin): ";
-    cin >> filename3;
-
-    task3(filename3);
     return 0;
 }
