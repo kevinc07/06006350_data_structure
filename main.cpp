@@ -39,11 +39,12 @@ bool isPrime(int n) {
 }
 
 // Function to find the next prime number greater than a given number
-int nextPrime(int n) {
-    while (!isPrime(n)) {               // Keep checking until a prime number is found
-        n++;
+int nextPrime(double n) {
+    int startingPoint = static_cast<int>(ceil(n));  // Round up to the nearest integer
+    while (!isPrime(startingPoint)) {
+        startingPoint++;
     }
-    return n;                           // Return the next prime number
+    return startingPoint;  // Return the next prime number
 }
 
 // Hash function: generates a hash value from the given key
@@ -103,8 +104,7 @@ void task0(const string& txtFilename) {
     binFile.close();
 }
 
-void computeAverageComparisons(const vector<HashEntry>& hashTable) {
-    int tableSize = hashTable.size();
+void computeAverageComparisons(const vector<HashEntry>& hashTable, int studentCount, int tableSize) {
 
     // For existing values
     int totalComparisonsExisting = 0;
@@ -112,7 +112,7 @@ void computeAverageComparisons(const vector<HashEntry>& hashTable) {
 
     // For non-existing values
     int totalComparisonsNonExisting = 0;
-    int trialsForNonExisting = tableSize; // Assume we will search for a non-existing value from each slot
+
 
     for (int i = 0; i < tableSize; i++) {
         const HashEntry& entry = hashTable[i];
@@ -140,8 +140,8 @@ void computeAverageComparisons(const vector<HashEntry>& hashTable) {
         totalComparisonsNonExisting += comparisonsForThisSlot;
     }
 
-    double averageExisting = static_cast<double>(totalComparisonsExisting) / existingEntriesCount;
-    double averageNonExisting = static_cast<double>(totalComparisonsNonExisting) / trialsForNonExisting;
+    double averageExisting = static_cast<double>(totalComparisonsExisting) / studentCount;
+    double averageNonExisting = static_cast<double>(totalComparisonsNonExisting) / tableSize;
     
     cout << "unsuccessful search: " << averageNonExisting << " comparisions on average" << endl;
     cout << "successful search: " << averageExisting << " comparisions on average" << endl;
@@ -177,7 +177,7 @@ void task1(const string& filename) {
     // 計算雜湊表的大小（學生數量的1.2倍的下一個質數）
     int tableSize = nextPrime(static_cast<int>(1.2 * studentCount));
 
-    // 初始化一個大小為tableSize的空雜湊雜湊表
+    // 初始化一個大小為tableSize的空雜湊表
     vector<HashEntry> hashTable(tableSize);
     
     Student student;
@@ -229,22 +229,247 @@ void task1(const string& filename) {
     binFile.close();
     outputFile.close();
     // 計算並打印成功和不成功搜索的平均比較次數
-    computeAverageComparisons(hashTable);
+    computeAverageComparisons(hashTable, studentCount, tableSize);
 }
 
+int stepFunc(const char* key, int maxStep) {
+    long long result = 1;
+    for (int i = 0; i < 10 && key[i] != '\0'; i++) {
+        result *= key[i];
+    }
+    return maxStep - (result % maxStep);
+}
 
+void task2(const string& filename) {
+    string binFilename = filename.substr(0, filename.find_last_of('.')) + ".bin";
+    ifstream binFile(binFilename, ios::binary);
+    
+    if (!binFile) {
+        cerr << "Error opening binary file." << endl;
+        return;
+    }
+
+    binFile.seekg(0, ios::end);
+    long long studentCount = static_cast<long long>(binFile.tellg()) / sizeof(Student);
+    binFile.seekg(0, ios::beg);
+    cout << "studentCount : " << studentCount << endl;
+    int tableSize = nextPrime(static_cast<int>(1.2 * studentCount));
+    int maxStep = nextPrime(studentCount / 3.0);
+    cout << "maxStep : " << maxStep << endl;
+    vector<HashEntry> hashTable(tableSize);
+    
+    Student student;
+    int totalComparisons = 0; // 计算搜索现存值的平均比较次数
+    
+    while (binFile.read(reinterpret_cast<char*>(&student), sizeof(student))) {
+        int originalHvalue = hashFunc(student.sid, tableSize);
+        int step = stepFunc(student.sid, maxStep);
+        cout << "Step : " << step << endl;
+
+        int hvalue = originalHvalue;
+        int comparisons = 0; // For this specific student
+
+        // Add a guard against infinite loops by adding a counter
+        int counter = 0;
+        while (hashTable[hvalue].occupied && counter < tableSize) {
+            hvalue = (hvalue + step) % tableSize;
+            comparisons++;
+            counter++;
+        }
+
+        if (counter == tableSize) {
+            cerr << "Couldn't find an empty slot in the hash table. Aborting." << endl;
+            break; // Exit the loop
+        }
+
+        totalComparisons += comparisons + 1;  // +1 for the initial position
+        hashTable[hvalue].originalHvalue = originalHvalue;
+        hashTable[hvalue].hvalue = hvalue;
+        hashTable[hvalue].student = student;
+        hashTable[hvalue].occupied = true;
+    }
+
+
+    double averageExisting = static_cast<double>(totalComparisons) / studentCount;
+    cout << "Average comparisons for existing values: " << fixed << setprecision(3) << averageExisting << endl;
+
+    string outputFilename = filename.substr(0, filename.find_last_of('.')) + "double.txt";
+    ofstream outputFile(outputFilename);
+    if (!outputFile) {
+        cerr << "Error opening output file." << endl;
+        return;
+    }
+    
+    outputFile << " --- Hash Table Y --- (double hashing)" << endl;
+
+    for (int i = 0; i < tableSize; i++) {
+        const HashEntry& entry = hashTable[i];
+        outputFile << "[" << setw(3) << i << "]";
+        
+        if (entry.occupied) {
+            outputFile  << setw(12) << entry.originalHvalue << ","
+                        << setw(12) << entry.student.sid << ","
+                        << setw(12) << entry.student.sname << ","
+                        << setw(12) << entry.student.average;
+        }
+
+        outputFile << endl;
+    }
+
+    binFile.close();
+    outputFile.close();
+}
+
+void task3(const string& filename) {
+    // 從給定的文件名中生成二進制文件名（例如: students.txt -> students.bin）
+    string binFilename = filename.substr(0, filename.find_last_of('.')) + ".bin";
+    // 嘗試打開二進制文件
+    ifstream binFile(binFilename, ios::binary);
+    
+    // 如果二進制文件不存在或無法打開
+    if (!binFile) {
+        // 轉換文本文件到二進制文件
+        task0(filename);
+        // 再次嘗試打開二進制文件
+        binFile.open(binFilename, ios::binary);
+    }
+    // 如果二進制文件仍然不存在或無法打開
+    if (!binFile) {
+        cerr << "Error opening binary file." << endl;
+        return;
+    }
+
+    // 跳到二進制文件的末尾以獲取其大小
+    binFile.seekg(0, ios::end);
+    // 計算學生的數量（文件大小 / Student結構的大小）
+    long long studentCount = static_cast<long long>(binFile.tellg()) / sizeof(Student);
+    // 將文件指標移回文件的開始
+    binFile.seekg(0, ios::beg);
+
+    // 計算雜湊表的大小（學生數量的1.2倍的下一個質數）
+    int tableSize = nextPrime(static_cast<int>(1.2 * studentCount));
+
+    // 初始化一個大小為tableSize的空雜湊雜湊表
+    vector<HashEntry> hashTable(tableSize);
+    
+    Student student;
+    // 從二進制文件中讀取每一個學生並將其放入雜湊表中
+    for (long long i = 0; i < studentCount; i++) {
+        // 讀取學生資料
+        binFile.read(reinterpret_cast<char*>(&student), sizeof(Student));
+
+        // 進行雜湊計算
+        int hValue = hashFunc(student.sid, tableSize);
+        int originalHValue = hValue;  // 儲存原始的雜湊值
+        int probeCount = 1;           // 平方探測
+
+        // 使用平方探測來尋找適當的雜湊位址
+        while (hashTable[hValue].occupied) {
+            hValue = (originalHValue + probeCount * probeCount) % tableSize;
+            probeCount++;
+        }
+
+        // 將學生資料儲存到雜湊表中
+        hashTable[hValue].hvalue = hValue;
+        hashTable[hValue].originalHvalue = originalHValue;
+        hashTable[hValue].student = student;
+        hashTable[hValue].occupied = true;
+    }
+
+    binFile.close();
+
+    // 創建輸出文件名並嘗試打開它
+    string outputFilename = filename.substr(0, filename.find_last_of('.')) + "quadratic.txt";
+    ofstream outputFile(outputFilename);
+    if (!outputFile) {
+        cerr << "Error opening output file." << endl;
+        return;
+    }
+    
+    // 寫雜湊表的標題到輸出文件中
+    outputFile << " --- Hash Table Z --- (quadratic probing)" << endl;
+
+    // 將雜湊表的內容寫入輸出文件
+    for (int i = 0; i < tableSize; i++) {
+        const HashEntry& entry = hashTable[i];
+        outputFile << "[" << setw(3) << i << "]";
+        
+        if (entry.occupied) {
+            outputFile  << setw(12) << entry.originalHvalue << ","
+                        << setw(12) << entry.student.sid << ","
+                        << setw(12) << entry.student.sname << ","
+                        << setw(12) << entry.student.average;
+        }
+
+        outputFile << endl;
+    }
+
+    // 關閉文件
+    outputFile.close();
+    
+    // 1. 計算搜尋現存值的平均比較次數
+    double searchExistingAverage = 0.0;
+    for (const HashEntry &entry : hashTable) {
+        if (entry.occupied) {
+            int probeCount = 1;
+            int hValue = hashFunc(entry.student.sid, tableSize);
+            int originalHValue = hValue;
+
+            while (hashTable[hValue].occupied && (hashTable[hValue].student.sid != entry.student.sid)) {
+                hValue = (originalHValue + probeCount * probeCount) % tableSize;
+                probeCount++;
+            }
+            searchExistingAverage += probeCount;
+        }
+    }
+    // 2. 計算搜尋不存在值的平均比較次數
+    double searchNonExistingAverage = 0.0;
+
+    // 模擬從每個位置開始的搜索
+    for (int i = 0; i < tableSize; i++) {
+        int probeCount = 0;
+        int nextPos = i;
+
+        // 模擬從這個位置開始搜尋一個「不存在的值」
+        while (hashTable[nextPos].occupied && probeCount < tableSize) {
+            probeCount++;
+            nextPos = (i + probeCount * probeCount) % tableSize;
+        }
+
+        // 如果 probeCount 還小於 tableSize，那麼這意味著我們找到了一個空槽位
+        if (probeCount < tableSize) {
+            searchNonExistingAverage += (probeCount);
+        } else {
+            // 否則，如果 probeCount 達到 tableSize，這意味著哈希表已滿，我們已經探測了整個表
+            searchNonExistingAverage += probeCount;
+        }
+    }
+
+    searchNonExistingAverage /= tableSize;  // 除以雜湊表的大小得到平均值
+    cout << "Average comparisons for non-existing values: " << searchNonExistingAverage << endl;
+
+
+    searchExistingAverage /= studentCount;
+    cout << "Average comparisons for existing values: " << searchExistingAverage << endl;
+    }
 
 int main() {
     // 請求用戶輸入文件名
     string filename1;
     string filename2;
-    //cout << "Enter the filename (either .txt or .bin): ";
+    string filename3;
+
+    cout << "Enter the filename (either .txt or .bin): ";
     //cin >> filename1;
 
     //task1(filename1);
-    cout << "Enter the filename (either .txt or .bin): ";
-    cin >> filename2;
+    //cout << "Enter the filename (either .txt or .bin): ";
+    //cin >> filename2;
 
-    task2(filename2);
+    //task2(filename2);
+    //cout << "Enter the filename (either .txt or .bin): ";
+    cin >> filename3;
+
+    task3(filename3);
     return 0;
 }
