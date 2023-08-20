@@ -1,14 +1,11 @@
-//
-//  main.cpp
-//  HW2
-//
-//  Created by kevin on 2023/8/18.
-//
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <cmath>
 #include <string>
+#include <chrono>
+#include <cstring>
+#include <iomanip>
 
 using namespace std;
 
@@ -111,11 +108,9 @@ void computeAverageComparisons(const vector<HashEntry>& hashTable, int studentCo
 
     // For existing values
     int totalComparisonsExisting = 0;
-    int existingEntriesCount = 0;
 
     // For non-existing values
     int totalComparisonsNonExisting = 0;
-
 
     for (int i = 0; i < tableSize; i++) {
         const HashEntry& entry = hashTable[i];
@@ -123,7 +118,6 @@ void computeAverageComparisons(const vector<HashEntry>& hashTable, int studentCo
         if (entry.occupied) {
             int distance = (i - entry.originalHvalue + tableSize) % tableSize;
             totalComparisonsExisting += (distance + 1); // +1 because comparison includes the actual position too
-            existingEntriesCount++;
         }
     }
 
@@ -152,6 +146,7 @@ void computeAverageComparisons(const vector<HashEntry>& hashTable, int studentCo
 
 
 void task1(const string& inputNumber) {
+    auto start = std::chrono::high_resolution_clock::now();
     // 根據輸入的編號生成文件名
     string filename = "input" + inputNumber + ".txt";
     string binFilename = "input" + inputNumber + ".bin";
@@ -162,10 +157,16 @@ void task1(const string& inputNumber) {
     // 如果二進制文件不存在或無法打開
     if (!binFile) {
         // 轉換文本文件到二進制文件
-       if (!task0(filename, binFilename)) {
+        if (!task0(filename, binFilename)) {
             return; // If task0 fails, then exit task1
         }
+        binFile.open(binFilename, ios::binary);  // 重新打開新創建的二進制文件
+        if (!binFile) {                          // 檢查文件是否成功打開
+            cerr << "Error opening binary file after creation." << endl;
+            return;
+        }
     }
+
 
     // 跳到二進制文件的末尾以獲取其大小
     binFile.seekg(0, ios::end);
@@ -228,8 +229,15 @@ void task1(const string& inputNumber) {
     // 關閉文件
     binFile.close();
     outputFile.close();
+    auto stop = std::chrono::high_resolution_clock::now();
+
+    // 計算所需的時間
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    cout << "Time taken by function: " << duration.count() << " microseconds" << std::endl;
     // 計算並打印成功和不成功搜索的平均比較次數
     computeAverageComparisons(hashTable, studentCount, tableSize);
+
+
 }
 
 int stepFunc(const char* key, int maxStep) {
@@ -241,6 +249,7 @@ int stepFunc(const char* key, int maxStep) {
 }
 
 void task2(const string& inputNumber) {
+    auto start = std::chrono::high_resolution_clock::now();
     string filename = "input" + inputNumber + ".txt";
     string binFilename = "input" + inputNumber + ".bin";
     ifstream binFile(binFilename, ios::binary);
@@ -260,7 +269,7 @@ void task2(const string& inputNumber) {
     vector<HashEntry> hashTable(tableSize);
     
     Student student;
-    int totalComparisons = 0; // 计算搜索现存值的平均比较次数
+    int totalComparisons = 0; // 記算搜索現存值的平均比較次數
     
     while (binFile.read(reinterpret_cast<char*>(&student), sizeof(student))) {
         int originalHvalue = hashFunc(student.sid, tableSize);
@@ -289,7 +298,11 @@ void task2(const string& inputNumber) {
         hashTable[hvalue].student = student;
         hashTable[hvalue].occupied = true;
     }
+    auto stop = std::chrono::high_resolution_clock::now();
 
+    // 計算所需的時間
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    cout << "Time taken by function: " << duration.count() << " microseconds" << std::endl;
 
     double averageExisting = static_cast<double>(totalComparisons) / studentCount;
     cout << "Average comparisons for existing values: " << fixed << setprecision(3) << averageExisting << endl;
@@ -322,6 +335,7 @@ void task2(const string& inputNumber) {
 }
 
 void task3(const string& inputNumber) {
+    auto start = std::chrono::high_resolution_clock::now();
     string filename = "input" + inputNumber + ".txt";
     string binFilename = "input" + inputNumber + ".bin";
     ifstream binFile(binFilename, ios::binary);
@@ -398,7 +412,11 @@ void task3(const string& inputNumber) {
 
     // 關閉文件
     outputFile.close();
-    
+    auto stop = std::chrono::high_resolution_clock::now();
+
+    // 計算所需的時間
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    cout << "Time taken by function: " << duration.count() << " microseconds" << std::endl;
     // 1. 計算搜尋現存值的平均比較次數
     double searchExistingAverage = 0.0;
     for (const HashEntry &entry : hashTable) {
@@ -444,7 +462,7 @@ void task3(const string& inputNumber) {
     searchExistingAverage /= studentCount;
     cout << "Average comparisons for existing values: " << searchExistingAverage << endl;
     }
-
+    
 int main() {
     // 請求用戶輸入文件名
     string filename1;
